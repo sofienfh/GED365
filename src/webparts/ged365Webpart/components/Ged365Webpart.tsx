@@ -73,7 +73,10 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
             results.forEach(column => {
               metadata[column.internalName] = '';
             });
-            this.setState({ listColumns: results, metadata });
+            this.setState({
+              listColumns: results.filter(column => column.internalName !== 'Nom'), // Exclure le champ "Nom"
+              metadata
+            });
           })
           .catch(error => {
             console.error('Error getting list columns:', error);
@@ -130,7 +133,7 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
     }));
   };
 
-  private handleFileChange = (internalName: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  private handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files && event.target.files[0];
     if (file) {
       this.setState({ uploadFile: file });
@@ -207,7 +210,8 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
   private handleUploadSubmit = () => {
     if (this.state.uploadFile) {
       const metadata = { ...this.state.metadata };
-      //const fileName = this.state.uploadFile.name;
+      const fileName = this.state.uploadFile.name;
+      metadata['Nom'] = fileName; // Utiliser le nom du fichier téléchargé comme métadonnée "Nom"
 
       this._spOperations.UploadFile(this.props.context, this.props.list_title, this.state.uploadFile, metadata)
         .then((result: string) => {
@@ -319,7 +323,7 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
                         id={column.internalName}
                         accept="image/*"
                         className={styles['text-field']}
-                        onChange={this.handleFileChange(column.internalName)}
+                        onChange={this.handleFileChange}
                       />
                     </div>
                   </div>
@@ -393,7 +397,7 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
         <div className={styles.welcome}>
           <div className={styles['align-right-items']}>
             <Button 
-              text="Créer un document" 
+              text="+ Créer un document" 
               onClick={this.openCreateModal} 
               className={`${this.getButtonClass()} ${styles.myButton}`} 
               style={buttonStyle} // Apply the style to the button
@@ -464,7 +468,7 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
                       type="file"
                       id="uploadFile"
                       className={styles['text-field']}
-                      onChange={this.handleFileChange('uploadFile')}
+                      onChange={this.handleFileChange}
                     />
                   </div>
                 </div>

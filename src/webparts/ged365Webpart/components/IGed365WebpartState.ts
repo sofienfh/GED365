@@ -21,6 +21,7 @@ export interface IGed365WebpartState {
   newMetadataDescription: string;
   newMetadataType: string;
   choices: string[];
+  
 }
 
 
