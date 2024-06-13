@@ -1,9 +1,14 @@
 import * as React from 'react';
-import { Button, Modal, Dropdown, IDropdownOption, ChoiceGroup, IChoiceGroupOption } from 'office-ui-fabric-react';
+import {IDropdownOption, IChoiceGroupOption } from 'office-ui-fabric-react';
 import styles from './Ged365Webpart.module.scss';
 import { IGed365WebpartProps } from './IGed365WebpartProps';
 import { IGed365WebpartState } from './IGed365WebpartState';
 import { SPOperations, SPListColumn } from '../../Services/SPServices';
+import ButtonGrid from './ButtonGrid';
+import CreateDocumentModal from './CreateDocumentModal';
+import UploadDocumentModal from './UploadDocumentModal';
+import AddMetadataModal from './AddMetadataModal';
+import CreateFolderModal from './CreateFolderModal';
 
 const metadataTypeOptions: IDropdownOption[] = [
   { key: 'Text', text: 'Ligne de texte' },
@@ -110,7 +115,6 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
       }
     });
   };
-  
 
   private handleNewMetadataFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     this.setState({ newMetadataField: event.target.value });
@@ -451,238 +455,56 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
     return (
       <section className={`${styles.ged365Webpart} ${hasTeamsContext ? styles.teams : ''}`}>
         <div className={styles.welcome}>
-          <div className={styles['button-grid']}>
-            <Button
-              text="+ Créer un document"
-              onClick={this.openCreateModal}
-              className={`${this.getButtonClass()} ${styles.myButton}`}
-              style={buttonStyle} // Apply the style to the button
-            />
-            <Button
-              text="+ Ajouter un document"
-              onClick={this.openUploadModal}
-              className={`${this.getButtonClass()} ${styles.myButton}`}
-              style={buttonStyle} // Apply the style to the button
-            />
-            <Button
-              text="+ Ajouter une métadonnée"
-              onClick={this.openAddMetadataModal}
-              className={`${this.getButtonClass()} ${styles.myButton}`}
-              style={buttonStyle} // Apply the style to the button
-              disabled={!this.props.list_title} // Disable if list_title is not selected
-            />
-            <Button
-              text="+ Créer un dossier"
-              onClick={this.openCreateFolderModal}
-              className={`${this.getButtonClass()} ${styles.myButton}`}
-              style={buttonStyle} // Apply the style to the button
-              disabled={!this.props.list_title} // Disable if list_title is not selected
-            />
-          </div>
+          <ButtonGrid
+            openCreateModal={this.openCreateModal}
+            openUploadModal={this.openUploadModal}
+            openAddMetadataModal={this.openAddMetadataModal}
+            openCreateFolderModal={this.openCreateFolderModal}
+            listTitle={this.props.list_title}
+            buttonStyle={buttonStyle}
+            getButtonClass={this.getButtonClass}
+          />
 
-          <Modal
+          <CreateDocumentModal
             isOpen={this.state.showCreateModal}
             onDismiss={() => this.setState({ showCreateModal: false })}
-            isBlocking={false}
-            containerClassName={styles.modalContainer}
-          >
-            <div className={styles.modalHeader}>
-              <span>Créer un document</span>
-              <Button iconProps={{ iconName: 'Cancel' }} onClick={() => this.setState({ showCreateModal: false })} />
-            </div>
-            <div className={styles.modalBody}>
-              {columnFields}
+            handleCreateSubmit={this.handleCreateSubmit}
+            handleDocumentTypeChange={this.handleDocumentTypeChange}
+            columnFields={columnFields}
+            documentTypeOptions={documentTypeOptions}
+          />
 
-              <div className="mb-3">
-                <label>Select Document Type</label>
-                <div className={styles['field-wrapper']}>
-                  <div className={styles['field-group']}>
-                    <Dropdown
-                      placeholder="Select document type"
-                      options={documentTypeOptions}
-                      onChange={this.handleDocumentTypeChange}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className={styles.modalFooter}>
-              <Button className={styles.myButton} text="Submit" onClick={this.handleCreateSubmit} />
-              <Button className={styles.cancelButton} text="Cancel" onClick={() => this.setState({ showCreateModal: false })} />
-            </div>
-          </Modal>
-
-          <Modal
+          <UploadDocumentModal
             isOpen={this.state.showUploadModal}
             onDismiss={() => this.setState({ showUploadModal: false })}
-            isBlocking={false}
-            containerClassName={styles.modalContainer}
-          >
-            <div className={styles.modalHeader}>
-              <span>+ Ajouter un document</span>
-              <Button iconProps={{ iconName: 'Cancel' }} onClick={() => this.setState({ showUploadModal: false })} />
-            </div>
-            <div className={styles.modalBody}>
-              <div className="mb-3">
-                <label htmlFor="uploadFile">Select File to Upload</label>
-                <div className={styles['field-wrapper']}>
-                  <div className={styles['field-group']}>
-                    <input
-                      type="file"
-                      id="uploadFile"
-                      className={styles['text-field']}
-                      onChange={this.handleFileChange}
-                    />
-                  </div>
-                </div>
-              </div>
+            handleUploadSubmit={this.handleUploadSubmit}
+            handleFileChange={this.handleFileChange}
+            columnFields={columnFields}
+          />
 
-              {columnFields}
-            </div>
-            <div className={styles.modalFooter}>
-              <Button className={styles.myButton} text="Submit" onClick={this.handleUploadSubmit} />
-              <Button className={styles.cancelButton} text="Cancel" onClick={() => this.setState({ showUploadModal: false })} />
-            </div>
-          </Modal>
-
-          <Modal
+          <AddMetadataModal
             isOpen={this.state.showAddMetadataModal}
             onDismiss={() => this.setState({ showAddMetadataModal: false })}
-            isBlocking={false}
-            containerClassName={styles.modalContainer}
-          >
-            <div className={styles.modalHeader}>
-              <span>+ Ajouter une métadonnée</span>
-              <Button iconProps={{ iconName: 'Cancel' }} onClick={() => this.setState({ showAddMetadataModal: false })} />
-            </div>
-            <div className={styles.modalBody}>
-              <div className="mb-3">
-                <label htmlFor="newMetadataField">Name</label>
-                <div className={styles['field-wrapper']}>
-                  <div className={styles['field-group']}>
-                    <input
-                      type="text"
-                      id="newMetadataField"
-                      className={styles['text-field']}
-                      onChange={this.handleNewMetadataFieldChange}
-                      value={this.state.newMetadataField}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="mb-3">
-                <label htmlFor="newMetadataDescription">Description</label>
-                <div className={styles['field-wrapper']}>
-                  <div className={styles['field-group']}>
-                    <input
-                      type="text"
-                      id="newMetadataDescription"
-                      className={styles['text-field']}
-                      onChange={this.handleNewMetadataDescriptionChange}
-                      value={this.state.newMetadataDescription}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="mb-3">
-                <label htmlFor="newMetadataType">Metadata Type</label>
-                <div className={styles['field-wrapper']}>
-                  <div className={styles['field-group']}>
-                    <Dropdown
-                      placeholder="Select metadata type"
-                      options={metadataTypeOptions}
-                      onChange={this.handleNewMetadataTypeChange}
-                      selectedKey={this.state.newMetadataType}
-                    />
-                  </div>
-                </div>
-              </div>
-              {this.state.newMetadataType === 'Text' && (
-                <div className="mb-3">
-                  <label>Text Value</label>
-                  <div className={styles['field-wrapper']}>
-                    <div className={styles['field-group']}>
-                      <input type="text" className={styles['text-field']} value="" readOnly />
-                    </div>
-                  </div>
-                </div>
-              )}
-              {this.state.newMetadataType === 'Choice' && (
-                <>
-                  {this.state.choices.map((choice, index) => (
-                    <div key={index} className="mb-3">
-                      <label>Choice {index + 1}</label>
-                      <div className={styles['field-wrapper']}>
-                        <div className={styles['field-group']}>
-                          <input
-                            type="text"
-                            className={styles['text-field']}
-                            value={choice}
-                            onChange={this.handleChoiceChange(index)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <Button text="Add Choice" onClick={this.addChoiceField} />
-                </>
-              )}
-              {this.state.newMetadataType === 'Number' && (
-                <div className="mb-3">
-                  <label>Number Value</label>
-                  <div className={styles['field-wrapper']}>
-                    <div className={styles['field-group']}>
-                      <input type="number" className={styles['text-field']} value="" readOnly />
-                    </div>
-                  </div>
-                </div>
-              )}
-              {this.state.newMetadataType === 'Boolean' && (
-                <div className="mb-3">
-                  <label>Boolean Value</label>
-                  <div className={styles['field-wrapper']}>
-                    <div className={styles['field-group']}>
-                      <ChoiceGroup options={choiceGroupOptions} defaultSelectedKey="No" />
-                    </div>
-                  </div>
-                </div>
-              )}
-              {this.state.newMetadataType === 'Image' && (
-                <div className="mb-3">
-                  <label>Upload Image</label>
-                  <div className={styles['field-wrapper']}>
-                    <div className={styles['field-group']}>
-                      <input type="file" accept="image/*" className={styles['text-field']} />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className={styles.modalFooter}>
-              <Button className={styles.myButton} text="Add" onClick={this.addMetadataField} />
-              <Button className={styles.cancelButton} text="Cancel" onClick={() => this.setState({ showAddMetadataModal: false })} />
-            </div>
-          </Modal>
+            handleNewMetadataFieldChange={this.handleNewMetadataFieldChange}
+            handleNewMetadataDescriptionChange={this.handleNewMetadataDescriptionChange}
+            handleNewMetadataTypeChange={this.handleNewMetadataTypeChange}
+            handleChoiceChange={this.handleChoiceChange}
+            addChoiceField={this.addChoiceField}
+            addMetadataField={this.addMetadataField}
+            newMetadataField={this.state.newMetadataField}
+            newMetadataDescription={this.state.newMetadataDescription}
+            newMetadataType={this.state.newMetadataType}
+            metadataTypeOptions={metadataTypeOptions}
+            choices={this.state.choices}
+            choiceGroupOptions={choiceGroupOptions}
+          />
 
-          <Modal
+          <CreateFolderModal
             isOpen={this.state.showCreateFolderModal}
             onDismiss={() => this.setState({ showCreateFolderModal: false })}
-            isBlocking={false}
-            containerClassName={styles.modalContainer}
-          >
-            <div className={styles.modalHeader}>
-              <span>Créer un dossier</span>
-              <Button iconProps={{ iconName: 'Cancel' }} onClick={() => this.setState({ showCreateFolderModal: false })} />
-            </div>
-            <div className={styles.modalBody}>
-
-              {columnFields}
-            </div>
-            <div className={styles.modalFooter}>
-              <Button className={styles.myButton} text="Submit" onClick={this.handleCreateFolderSubmit} />
-              <Button className={styles.cancelButton} text="Cancel" onClick={() => this.setState({ showCreateFolderModal: false })} />
-            </div>
-          </Modal>
+            handleCreateFolderSubmit={this.handleCreateFolderSubmit}
+            columnFields={columnFields}
+          />
         </div>
       </section>
     );
