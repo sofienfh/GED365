@@ -292,3 +292,11 @@
   font-size: 12px;
   color: #333;
 }
+.button-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 10px;
+}
+.myButton {
+  width: 100%;
+}

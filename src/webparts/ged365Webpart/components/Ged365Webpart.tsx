@@ -29,10 +29,10 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
       listTiltes: [],
       listItems: [],
       status: '',
-      Titre_list_item: '', // Initialisation de Titre_list_item
+      Titre_list_item: '',
       showModal: false,
       listItemId: '',
-      selectedDocumentType: "txt",
+      selectedDocumentType: 'txt',
       metadata: {},
       uploadFile: null,
       isUploadMode: false,
@@ -43,6 +43,8 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
       newMetadataDescription: '',
       newMetadataType: 'Text',
       choices: [''],
+      showCreateFolderModal: false, // New state for folder creation modal
+      newFolderName: '', // New state for storing the folder name
     };
   }
 
@@ -75,7 +77,7 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
             });
             this.setState({
               listColumns: results.filter(column => column.internalName !== 'Nom'), // Exclure le champ "Nom"
-              metadata
+              metadata,
             });
           })
           .catch(error => {
@@ -88,6 +90,27 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
   public openAddMetadataModal = () => {
     this.setState({ showAddMetadataModal: true });
   };
+
+  public openCreateFolderModal = () => {
+    this.setState({ showCreateFolderModal: true }, () => {
+      if (this.props.list_title) {
+        this._spOperations.GetListColumns(this.props.context, this.props.list_title)
+          .then((results: SPListColumn[]) => {
+            const metadata: { [key: string]: any } = {};
+            results.forEach(column => {
+              if (column.internalName !== 'Nom_du_dossier') { // Exclure spécifiquement le champ 'Nom du dossier'
+                metadata[column.internalName] = '';
+              }
+            });
+            this.setState({ listColumns: results, metadata });
+          })
+          .catch(error => {
+            console.error('Error getting list columns:', error);
+          });
+      }
+    });
+  };
+  
 
   private handleNewMetadataFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     this.setState({ newMetadataField: event.target.value });
@@ -108,8 +131,8 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
     this.setState(prevState => ({
       metadata: {
         ...prevState.metadata,
-        [internalName]: value
-      }
+        [internalName]: value,
+      },
     }));
   };
 
@@ -118,8 +141,8 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
     this.setState(prevState => ({
       metadata: {
         ...prevState.metadata,
-        [internalName]: value
-      }
+        [internalName]: value,
+      },
     }));
   };
 
@@ -128,8 +151,8 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
     this.setState(prevState => ({
       metadata: {
         ...prevState.metadata,
-        [internalName]: value
-      }
+        [internalName]: value,
+      },
     }));
   };
 
@@ -172,7 +195,7 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
                 newMetadataDescription: '',
                 newMetadataType: 'Text',
                 showAddMetadataModal: false,
-                choices: ['']
+                choices: [''],
               });
             })
             .catch(error => {
@@ -204,7 +227,7 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
         console.error('Error creating file:', error);
       });
 
-    this.setState({ showCreateModal: false, selectedDocumentType: "txt" });
+    this.setState({ showCreateModal: false, selectedDocumentType: 'txt' });
   };
 
   private handleUploadSubmit = () => {
@@ -222,6 +245,36 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
         });
 
       this.setState({ showUploadModal: false, uploadFile: null });
+    }
+  };
+
+  private handleCreateFolderSubmit = () => {
+    const { newFolderName } = this.state;
+    const metadata = { ...this.state.metadata };
+    if (newFolderName) {
+      this._spOperations.CreateFolder(this.props.context, this.props.list_title, newFolderName)
+        .then(result => {
+          // Update folder metadata
+          this._spOperations.GetFolderItem(this.props.context, this.props.list_title, newFolderName)
+            .then(folderItemId => {
+              if (folderItemId) {
+                this._spOperations.UpdateListItem(this.props.context, this.props.list_title, folderItemId, newFolderName, metadata)
+                  .then(updateResult => {
+                    alert(updateResult); // Success message
+                    this.setState({ showCreateFolderModal: false, newFolderName: '', metadata: {} }); // Reset and close modal
+                  })
+                  .catch(error => {
+                    console.error('Error updating folder metadata:', error);
+                  });
+              }
+            })
+            .catch(error => {
+              console.error('Error getting folder item ID:', error);
+            });
+        })
+        .catch(error => {
+          console.error('Error creating folder:', error);
+        });
     }
   };
 
@@ -243,14 +296,14 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
 
     const buttonStyle = {
       backgroundColor: backgroundColor,
-      color: textColor // Set the text color for the buttons
+      color: textColor, // Set the text color for the buttons
     };
 
     const documentTypeOptions: IDropdownOption[] = [
       { key: 'docx', text: 'Word Document (.docx)' },
       { key: 'txt', text: 'Text Document (.txt)' },
       { key: 'pptx', text: 'PowerPoint Presentation (.pptx)' },
-      { key: 'xlsx', text: 'Excel Spreadsheet (.xlsx)' }
+      { key: 'xlsx', text: 'Excel Spreadsheet (.xlsx)' },
     ];
 
     const columnFields = this.state.listColumns
@@ -300,9 +353,12 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
                         id={column.internalName}
                         onChange={this.handleSelectChange(column.internalName)}
                       >
-                        {column.choices && column.choices.map(choice => (
-                          <option key={choice} value={choice}>{choice}</option>
-                        ))}
+                        {column.choices &&
+                          column.choices.map(choice => (
+                            <option key={choice} value={choice}>
+                              {choice}
+                            </option>
+                          ))}
                       </select>
                     </div>
                   </div>
@@ -395,23 +451,30 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
     return (
       <section className={`${styles.ged365Webpart} ${hasTeamsContext ? styles.teams : ''}`}>
         <div className={styles.welcome}>
-          <div className={styles['align-right-items']}>
-            <Button 
-              text="+ Créer un document" 
-              onClick={this.openCreateModal} 
-              className={`${this.getButtonClass()} ${styles.myButton}`} 
+          <div className={styles['button-grid']}>
+            <Button
+              text="+ Créer un document"
+              onClick={this.openCreateModal}
+              className={`${this.getButtonClass()} ${styles.myButton}`}
               style={buttonStyle} // Apply the style to the button
             />
-            <Button 
-              text="+ Ajouter un document" 
-              onClick={this.openUploadModal} 
-              className={`${this.getButtonClass()} ${styles.myButton}`} 
+            <Button
+              text="+ Ajouter un document"
+              onClick={this.openUploadModal}
+              className={`${this.getButtonClass()} ${styles.myButton}`}
               style={buttonStyle} // Apply the style to the button
             />
-            <Button 
-              text="+ Ajouter une métadonnée" 
-              onClick={this.openAddMetadataModal} 
-              className={`${this.getButtonClass()} ${styles.myButton}`} 
+            <Button
+              text="+ Ajouter une métadonnée"
+              onClick={this.openAddMetadataModal}
+              className={`${this.getButtonClass()} ${styles.myButton}`}
+              style={buttonStyle} // Apply the style to the button
+              disabled={!this.props.list_title} // Disable if list_title is not selected
+            />
+            <Button
+              text="+ Créer un dossier"
+              onClick={this.openCreateFolderModal}
+              className={`${this.getButtonClass()} ${styles.myButton}`}
               style={buttonStyle} // Apply the style to the button
               disabled={!this.props.list_title} // Disable if list_title is not selected
             />
@@ -539,12 +602,7 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
                   <label>Text Value</label>
                   <div className={styles['field-wrapper']}>
                     <div className={styles['field-group']}>
-                      <input
-                        type="text"
-                        className={styles['text-field']}
-                        value=""
-                        readOnly
-                      />
+                      <input type="text" className={styles['text-field']} value="" readOnly />
                     </div>
                   </div>
                 </div>
@@ -574,12 +632,7 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
                   <label>Number Value</label>
                   <div className={styles['field-wrapper']}>
                     <div className={styles['field-group']}>
-                      <input
-                        type="number"
-                        className={styles['text-field']}
-                        value=""
-                        readOnly
-                      />
+                      <input type="number" className={styles['text-field']} value="" readOnly />
                     </div>
                   </div>
                 </div>
@@ -599,11 +652,7 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
                   <label>Upload Image</label>
                   <div className={styles['field-wrapper']}>
                     <div className={styles['field-group']}>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className={styles['text-field']}
-                      />
+                      <input type="file" accept="image/*" className={styles['text-field']} />
                     </div>
                   </div>
                 </div>
@@ -612,6 +661,26 @@ export default class Ged365Webpart extends React.Component<IGed365WebpartProps, 
             <div className={styles.modalFooter}>
               <Button className={styles.myButton} text="Add" onClick={this.addMetadataField} />
               <Button className={styles.cancelButton} text="Cancel" onClick={() => this.setState({ showAddMetadataModal: false })} />
+            </div>
+          </Modal>
+
+          <Modal
+            isOpen={this.state.showCreateFolderModal}
+            onDismiss={() => this.setState({ showCreateFolderModal: false })}
+            isBlocking={false}
+            containerClassName={styles.modalContainer}
+          >
+            <div className={styles.modalHeader}>
+              <span>Créer un dossier</span>
+              <Button iconProps={{ iconName: 'Cancel' }} onClick={() => this.setState({ showCreateFolderModal: false })} />
+            </div>
+            <div className={styles.modalBody}>
+
+              {columnFields}
+            </div>
+            <div className={styles.modalFooter}>
+              <Button className={styles.myButton} text="Submit" onClick={this.handleCreateFolderSubmit} />
+              <Button className={styles.cancelButton} text="Cancel" onClick={() => this.setState({ showCreateFolderModal: false })} />
             </div>
           </Modal>
         </div>

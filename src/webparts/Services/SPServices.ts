@@ -89,8 +89,6 @@ export class SPOperations {
       );
     });
   }
-  
-  
 
   public CreateFile(
     context: WebPartContext,
@@ -178,8 +176,7 @@ export class SPOperations {
         });
     });
   }
-  
-  
+
   public UploadFile(
     context: WebPartContext,
     listTitle: string,
@@ -243,8 +240,7 @@ export class SPOperations {
       });
     });
   }
-  
-  
+
   public AddMetadataField(
     context: WebPartContext,
     listTitle: string,
@@ -315,13 +311,91 @@ export class SPOperations {
         });
     });
   }
-  
-  
-  
-  
-  
-  
-  
+
+  public CreateFolder(
+    context: WebPartContext,
+    listTitle: string,
+    folderName: string
+  ): Promise<string> {
+    const restApiUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getByTitle('${listTitle}')/rootfolder/folders/add('${folderName}')`;
+    return new Promise<string>((resolve, reject) => {
+      context.spHttpClient.post(restApiUrl, SPHttpClient.configurations.v1, {
+        headers: {
+          'Accept': 'application/json;odata=nometadata',
+          'Content-Type': 'application/json;odata=nometadata',
+          'odata-version': '',
+        },
+      }).then((response: SPHttpClientResponse) => {
+        if (response.ok) {
+          resolve('Folder created successfully.');
+        } else {
+          reject(`Error creating folder. Status code: ${response.status}`);
+        }
+      }).catch(error => {
+        reject(`Error creating folder: ${error}`);
+      });
+    });
+  }
+
+  public GetFolderItem(
+    context: WebPartContext,
+    listTitle: string,
+    folderName: string
+  ): Promise<number | null> {
+    const restApiUrl = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getByTitle('${listTitle}')/items?$filter=FileLeafRef eq '${folderName}'`;
+    return new Promise<number | null>((resolve, reject) => {
+      context.spHttpClient.get(restApiUrl, SPHttpClient.configurations.v1).then((response: SPHttpClientResponse) => {
+        if (response.ok) {
+          response.json().then((data: any) => {
+            if (data.value && data.value.length > 0) {
+              resolve(data.value[0].ID);
+            } else {
+              resolve(null);
+            }
+          }).catch(error => reject(error));
+        } else {
+          reject(`Error getting folder item. Status code: ${response.status}`);
+        }
+      }).catch(error => reject(error));
+    });
+  }
+
+  public UpdateListItem(
+    context: WebPartContext,
+    listTitle: string,
+    itemId: number,
+    folderName: string,
+    metadata: { [key: string]: any }
+  ): Promise<string> {
+    const restApiUrl: string = `${context.pageContext.web.absoluteUrl}/_api/web/lists/getByTitle('${listTitle}')/items(${itemId})`;
+    const metadataWithMetaType = {
+      '__metadata': { 'type': `SP.Data.${listTitle.replace(/ /g, '_x0020_')}ListItem` },
+      Title: folderName,
+      ...metadata
+    };
+    const options: ISPHttpClientOptions = {
+      headers: {
+        'Accept': 'application/json;odata=verbose',
+        'Content-Type': 'application/json;odata=verbose',
+        'odata-version': ''
+      },
+      body: JSON.stringify(metadataWithMetaType)
+    };
+
+    return new Promise<string>((resolve, reject) => {
+      context.spHttpClient.post(restApiUrl, SPHttpClient.configurations.v1, options)
+        .then((response: SPHttpClientResponse) => {
+          if (response.ok) {
+            resolve('Folder metadata updated successfully.');
+          } else {
+            reject('Error updating folder metadata. Status code: ' + response.status);
+          }
+        })
+        .catch((error: any) => {
+          reject('Error updating folder metadata: ' + error);
+        });
+    });
+  }
 
   private _getFileBuffer(file: File): Promise<ArrayBuffer> {
     return new Promise<ArrayBuffer>((resolve, reject) => {
@@ -350,23 +424,7 @@ export class SPOperations {
     });
   }
 
-  public UpdateListItem(context: WebPartContext, list_title: string, itemId: string, Titre_list_item: string): Promise<string> {
-    let restApiurl: string = context.pageContext.web.absoluteUrl + "/_api/web/lists/getByTitle('" + list_title + "')/items";
-    const body: string = JSON.stringify({ Title: Titre_list_item })
-    return new Promise<string>(async (resolve, reject) => {
-      context.spHttpClient.post(restApiurl + "(" + itemId + ")", SPHttpClient.configurations.v1, {
-        headers: {
-          Accept: "application/json;odata=nometadata",
-          "content-type": "application/json;odata=nometadata",
-          "odata-version": "",
-          "IF-MATCH": "*",
-          "X-HTTP-METHOD": "MERGE",
-        }, body: body,
-      }).then((Response: SPHttpClientResponse) => {
-        resolve("item with id" + itemId + " updated successfully");
-      }, (error: any) => { reject("error"); });
-    });
-  }
+
 }
 
 export interface SPListItem {
